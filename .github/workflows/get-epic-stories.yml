@@ -3,11 +3,20 @@ on:
   pull_request:
     branches: [ main ]
   repository_dispatch:
-    type: ["event-triggered-by-jira"]
+    # this is the event_type passed in from the webhook, needs to match exactly what was defined in the webhook custom data payload
+    types: [ generate-deployment-ticket ]
 jobs:
-  Commit_Checker:
+  Release_Management:
     runs-on: ubuntu-latest
     steps:
+    
+    - name: Login
+      uses: atlassian/gajira-login@master
+      env:
+        JIRA_BASE_URL: "https://alightdevelopmentandit.atlassian.net/"
+        JIRA_USER_EMAIL: ${{ secrets.JIRA_USER }}
+        JIRA_API_TOKEN: ${{ secrets.JIRA_TOKEN }}
+
     - name: checkout repo content
       uses: actions/checkout@v2
       
@@ -24,10 +33,10 @@ jobs:
     - name: Generate Epic Stories Table
       id: jira_epic_stories
       run: |
-        output=$(python jira_epic_stories_table.py)
+        output=$(python jira_epic_stories_table.py ${{ github.event.client_payload.jira-issue }})
         echo "${output}}"
         echo "::set-output name=epic_story_details::$output"
       env:
-        JIRA_CLOUD_URL: "https://uneritx.atlassian.net"
+        JIRA_CLOUD_URL: "https://alightdevelopmentandit.atlassian.net/"
         JIRA_USER_LOCAL: ${{ secrets.JIRA_USER }}
         JIRA_TOKEN_LOCAL: ${{ secrets.JIRA_TOKEN }}
