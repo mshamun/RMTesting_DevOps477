@@ -2,7 +2,8 @@ name: Get Epic Stories
 on:
   pull_request:
     branches: [ main ]
-
+  repository_dispatch:
+    type: ["event-triggered-by-jira"]
 jobs:
   Commit_Checker:
     runs-on: ubuntu-latest
