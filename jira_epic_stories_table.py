@@ -1,15 +1,19 @@
 import functools
 import pprint
 from jira import JIRA
+from tabulate import tabulate
 import os
 import sys
 import warnings
 import pandas as pd
 
+warnings.filterwarnings('ignore',message='Unverified HTTPS request')
 
 jira_base_url = os.environ.get("JIRA_CLOUD_URL")
 username = os.environ.get("JIRA_USER_LOCAL")
 apikey = os.environ.get("JIRA_TOKEN_LOCAL")
+
+parent_epic_ticket = sys.argv[1]
 
 class issue_fields(dict):
  
@@ -22,7 +26,7 @@ class issue_fields(dict):
     self[key] = value
  
  
-
+ 
 def rgetattr(obj, attr, *args):
     def __getattr(obj, attr):
         return getattr(obj, attr, *args)
@@ -34,8 +38,8 @@ def get_field_data(field, name):
 def get_validation_fields(issue):
     migr_fields = issue.fields
     field_dict = {
-        'services_list': get_field_data(migr_fields, 'customfield_10038'),
-        'QA_Tester': get_field_data(migr_fields, 'customfield_10044.displayName')
+        'services_list': get_field_data(migr_fields, 'customfield_10426'),
+        'QA_Tester': get_field_data(migr_fields, 'customfield_10425.displayName')
     }
     valid_ticket = True
     jira_validation_results = {}
@@ -61,13 +65,12 @@ def get_validation_fields(issue):
             jira_validation_results[fieldname] = ', '.join(keys)
     jira_validation_results['valid_ticket'] = valid_ticket
     return jira_validation_results
-print(jira_base_url)
 jira = JIRA(options={'server':jira_base_url, 'verify':False}, basic_auth=(username, apikey))
 
-jira.search_issues('parentEpic=ST-1')
+jira.search_issues('parentEpic={}'.format(parent_epic_ticket))
 
 epic_stories=[]
-for issue in jira.search_issues('parentEpic=ST-1'):
+for issue in jira.search_issues('parentEpic={}'.format(parent_epic_ticket)):
     epic_stories.append(issue.key)
 
 epic_stories_details=[]
@@ -83,4 +86,5 @@ for story in epic_stories:
     epic_stories_details.append(validation_results)
 
 story_details_table=pd.DataFrame.from_dict(epic_stories_details)
-print(story_details_table.to_markdown())
+story_details_jira_table=tabulate(story_details_table, headers=['S.No','Service_list','QA_Tester','Valid_ticket','JIRA_ID','Summary','Status','Assignee'],tablefmt="jira")
+jira.add_comment(issue=parent_epic_ticket,body=story_details_jira_table)
